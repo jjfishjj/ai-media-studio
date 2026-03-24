@@ -45,6 +45,8 @@ export default function VideoTranslation() {
   const [subtitles, setSubtitles] = useState<SubtitleEntry[]>(mockSubtitles);
   const [isExtracting, setIsExtracting] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translationProgress, setTranslationProgress] = useState(0);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
