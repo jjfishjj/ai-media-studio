@@ -218,10 +218,19 @@ export default function VideoTranslation() {
               </div>
             )}
 
-            <Button className="w-full mt-2" onClick={handleTranslation}>
-              開始翻譯
+            <Button className="w-full mt-2" onClick={handleTranslation} disabled={isTranslating}>
+              {isTranslating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  翻譯中...
+                </>
+              ) : (
+                "開始翻譯"
+              )}
             </Button>
-          </div>
+            {isTranslating && (
+              <Progress value={translationProgress} className="mt-2" />
+            )}
         </div>
 
         {/* Center: Preview Player */}
