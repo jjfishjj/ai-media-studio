@@ -232,6 +232,7 @@ export default function VideoTranslation() {
               <Progress value={translationProgress} className="mt-2" />
             )}
           </div>
+        </div>
 
         {/* Center: Preview Player */}
         <div className="space-y-4">
