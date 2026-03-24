@@ -231,7 +231,7 @@ export default function VideoTranslation() {
             {isTranslating && (
               <Progress value={translationProgress} className="mt-2" />
             )}
-        </div>
+          </div>
 
         {/* Center: Preview Player */}
         <div className="space-y-4">
