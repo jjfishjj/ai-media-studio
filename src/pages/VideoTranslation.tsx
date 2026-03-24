@@ -1,10 +1,13 @@
 import { useState, useCallback } from "react";
-import { Upload, Mic, Play, Pause, Languages, ChevronDown } from "lucide-react";
+import { Upload, Mic, Play, Pause, Languages, ChevronDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const LANGUAGES = [
   { value: "zh", label: "中文" },
@@ -42,6 +45,8 @@ export default function VideoTranslation() {
   const [subtitles, setSubtitles] = useState<SubtitleEntry[]>(mockSubtitles);
   const [isExtracting, setIsExtracting] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translationProgress, setTranslationProgress] = useState(0);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -59,8 +64,50 @@ export default function VideoTranslation() {
   };
 
   const handleTranslation = async () => {
-    // Mock: future OpenAI / translation API integration
-    console.log("handleTranslation called", { sourceLang, targetVoice, subtitle1, subtitle2 });
+    if (subtitles.length === 0) {
+      toast.error("沒有可翻譯的字幕");
+      return;
+    }
+    setIsTranslating(true);
+    setTranslationProgress(20);
+    try {
+      const { data, error } = await supabase.functions.invoke("translate-subtitles", {
+        body: {
+          subtitles: subtitles.map((s) => ({ id: s.id, text: s.text })),
+          sourceLang: sourceLang,
+          targetLang: targetVoice,
+        },
+      });
+
+      setTranslationProgress(80);
+
+      if (error) {
+        throw new Error(error.message || "翻譯失敗");
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      const translations: { id: number; translated: string }[] = data.translations;
+      setSubtitles((prev) =>
+        prev.map((s) => {
+          const match = translations.find((t) => t.id === s.id);
+          return match ? { ...s, translated: match.translated } : s;
+        })
+      );
+
+      setTranslationProgress(100);
+      toast.success("翻譯完成！");
+    } catch (err: any) {
+      console.error("Translation error:", err);
+      toast.error(err.message || "翻譯過程中發生錯誤");
+    } finally {
+      setTimeout(() => {
+        setIsTranslating(false);
+        setTranslationProgress(0);
+      }, 500);
+    }
   };
 
   const updateSubtitle = (id: number, field: "text" | "translated", value: string) => {
@@ -171,9 +218,19 @@ export default function VideoTranslation() {
               </div>
             )}
 
-            <Button className="w-full mt-2" onClick={handleTranslation}>
-              開始翻譯
+            <Button className="w-full mt-2" onClick={handleTranslation} disabled={isTranslating}>
+              {isTranslating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  翻譯中...
+                </>
+              ) : (
+                "開始翻譯"
+              )}
             </Button>
+            {isTranslating && (
+              <Progress value={translationProgress} className="mt-2" />
+            )}
           </div>
         </div>
 
