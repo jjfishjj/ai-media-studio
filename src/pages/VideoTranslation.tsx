@@ -179,7 +179,7 @@ export default function VideoTranslation() {
           >
             <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
             {videoFile ? (
-              <p className="text-sm text-foreground font-medium">{videoFile}</p>
+              <p className="text-sm text-foreground font-medium">{videoFileName}</p>
             ) : (
               <>
                 <p className="text-sm text-foreground">拖拽 MP4/MOV 影片至此</p>
