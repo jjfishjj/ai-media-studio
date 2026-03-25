@@ -61,9 +61,50 @@ export default function VideoTranslation() {
   }, []);
 
   const handleExtractAudio = async () => {
+    if (!videoFile) {
+      toast.error("請先上傳影片");
+      return;
+    }
     setIsExtracting(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    setIsExtracting(false);
+    try {
+      const { base64, mimeType } = await extractAudioFromVideo(videoFile, (msg) => {
+        toast.info(msg);
+      });
+
+      toast.info("正在進行語音辨識...");
+
+      const { data, error } = await supabase.functions.invoke("transcribe-audio", {
+        body: {
+          audioBase64: base64,
+          mimeType,
+          sourceLang,
+        },
+      });
+
+      if (error) throw new Error(error.message || "語音辨識失敗");
+      if (data?.error) throw new Error(data.error);
+
+      const segments = data.segments;
+      if (segments && segments.length > 0) {
+        setSubtitles(
+          segments.map((s: any) => ({
+            id: s.id,
+            start: s.start,
+            end: s.end,
+            text: s.text,
+            translated: "",
+          }))
+        );
+        toast.success(`成功辨識 ${segments.length} 段字幕！`);
+      } else {
+        toast.warning("未偵測到語音內容");
+      }
+    } catch (err: any) {
+      console.error("Extraction error:", err);
+      toast.error(err.message || "語音提取過程中發生錯誤");
+    } finally {
+      setIsExtracting(false);
+    }
   };
 
   const handleTranslation = async () => {
