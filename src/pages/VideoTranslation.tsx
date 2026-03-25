@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Upload, Mic, Play, Pause, Languages, ChevronDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { extractAudioFromVideo } from "@/lib/audioExtractor";
 
 const LANGUAGES = [
   { value: "zh", label: "中文" },
@@ -35,7 +36,8 @@ const mockSubtitles: SubtitleEntry[] = [
 ];
 
 export default function VideoTranslation() {
-  const [videoFile, setVideoFile] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoFileName, setVideoFileName] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [sourceLang, setSourceLang] = useState("en");
   const [targetVoice, setTargetVoice] = useState("zh");
@@ -53,14 +55,56 @@ export default function VideoTranslation() {
     setDragActive(false);
     const file = e.dataTransfer.files[0];
     if (file && (file.type === "video/mp4" || file.type === "video/quicktime")) {
-      setVideoFile(file.name);
+      setVideoFile(file);
+      setVideoFileName(file.name);
     }
   }, []);
 
   const handleExtractAudio = async () => {
+    if (!videoFile) {
+      toast.error("請先上傳影片");
+      return;
+    }
     setIsExtracting(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    setIsExtracting(false);
+    try {
+      const { base64, mimeType } = await extractAudioFromVideo(videoFile, (msg) => {
+        toast.info(msg);
+      });
+
+      toast.info("正在進行語音辨識...");
+
+      const { data, error } = await supabase.functions.invoke("transcribe-audio", {
+        body: {
+          audioBase64: base64,
+          mimeType,
+          sourceLang,
+        },
+      });
+
+      if (error) throw new Error(error.message || "語音辨識失敗");
+      if (data?.error) throw new Error(data.error);
+
+      const segments = data.segments;
+      if (segments && segments.length > 0) {
+        setSubtitles(
+          segments.map((s: any) => ({
+            id: s.id,
+            start: s.start,
+            end: s.end,
+            text: s.text,
+            translated: "",
+          }))
+        );
+        toast.success(`成功辨識 ${segments.length} 段字幕！`);
+      } else {
+        toast.warning("未偵測到語音內容");
+      }
+    } catch (err: any) {
+      console.error("Extraction error:", err);
+      toast.error(err.message || "語音提取過程中發生錯誤");
+    } finally {
+      setIsExtracting(false);
+    }
   };
 
   const handleTranslation = async () => {
@@ -135,7 +179,7 @@ export default function VideoTranslation() {
           >
             <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
             {videoFile ? (
-              <p className="text-sm text-foreground font-medium">{videoFile}</p>
+              <p className="text-sm text-foreground font-medium">{videoFileName}</p>
             ) : (
               <>
                 <p className="text-sm text-foreground">拖拽 MP4/MOV 影片至此</p>
@@ -143,7 +187,7 @@ export default function VideoTranslation() {
               </>
             )}
             <input type="file" accept="video/mp4,video/quicktime" className="hidden" id="video-upload"
-              onChange={(e) => { if (e.target.files?.[0]) setVideoFile(e.target.files[0].name); }}
+              onChange={(e) => { if (e.target.files?.[0]) { setVideoFile(e.target.files[0]); setVideoFileName(e.target.files[0].name); } }}
             />
             <label htmlFor="video-upload">
               <Button variant="outline" size="sm" className="mt-3 cursor-pointer" asChild>
@@ -243,7 +287,7 @@ export default function VideoTranslation() {
                   <div className="w-full h-full bg-gradient-to-br from-muted to-card absolute inset-0" />
                   <div className="relative z-10">
                     <Play className="h-12 w-12 text-primary mx-auto" />
-                    <p className="text-xs text-muted-foreground mt-2">{videoFile}</p>
+                    <p className="text-xs text-muted-foreground mt-2">{videoFileName}</p>
                   </div>
                 </div>
               ) : (
