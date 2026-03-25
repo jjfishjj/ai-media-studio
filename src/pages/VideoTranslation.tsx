@@ -130,7 +130,7 @@ export default function VideoTranslation() {
         <p className="text-muted-foreground mt-1">上傳影片，自動翻譯並生成雙語字幕</p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Upload + Settings */}
         <div className="space-y-4">
           <div
