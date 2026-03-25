@@ -287,7 +287,7 @@ export default function VideoTranslation() {
                   <div className="w-full h-full bg-gradient-to-br from-muted to-card absolute inset-0" />
                   <div className="relative z-10">
                     <Play className="h-12 w-12 text-primary mx-auto" />
-                    <p className="text-xs text-muted-foreground mt-2">{videoFile}</p>
+                    <p className="text-xs text-muted-foreground mt-2">{videoFileName}</p>
                   </div>
                 </div>
               ) : (
