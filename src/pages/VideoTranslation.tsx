@@ -36,7 +36,8 @@ const mockSubtitles: SubtitleEntry[] = [
 ];
 
 export default function VideoTranslation() {
-  const [videoFile, setVideoFile] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoFileName, setVideoFileName] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [sourceLang, setSourceLang] = useState("en");
   const [targetVoice, setTargetVoice] = useState("zh");
