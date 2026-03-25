@@ -187,7 +187,7 @@ export default function VideoTranslation() {
               </>
             )}
             <input type="file" accept="video/mp4,video/quicktime" className="hidden" id="video-upload"
-              onChange={(e) => { if (e.target.files?.[0]) setVideoFile(e.target.files[0].name); }}
+              onChange={(e) => { if (e.target.files?.[0]) { setVideoFile(e.target.files[0]); setVideoFileName(e.target.files[0].name); } }}
             />
             <label htmlFor="video-upload">
               <Button variant="outline" size="sm" className="mt-3 cursor-pointer" asChild>
