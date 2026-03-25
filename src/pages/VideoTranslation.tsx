@@ -55,7 +55,8 @@ export default function VideoTranslation() {
     setDragActive(false);
     const file = e.dataTransfer.files[0];
     if (file && (file.type === "video/mp4" || file.type === "video/quicktime")) {
-      setVideoFile(file.name);
+      setVideoFile(file);
+      setVideoFileName(file.name);
     }
   }, []);
 
