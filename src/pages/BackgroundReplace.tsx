@@ -1,8 +1,10 @@
 import { useState, useCallback } from "react";
-import { Upload, Layers, Building2, Zap, Trees, Square, ImagePlus, ArrowLeftRight } from "lucide-react";
+import { Upload, Layers, Building2, Zap, Trees, Square, ImagePlus, ArrowLeftRight, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 
 const presetBackgrounds = [
   { id: "office", label: "辦公室", icon: Building2, color: "from-amber-900/30 to-amber-800/10" },
@@ -12,26 +14,63 @@ const presetBackgrounds = [
 ];
 
 export default function BackgroundReplace() {
-  const [videoFile, setVideoFile] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoFileName, setVideoFileName] = useState<string | null>(null);
   const [selectedBg, setSelectedBg] = useState<string | null>(null);
   const [customBg, setCustomBg] = useState<string | null>(null);
+  const [customBgPreview, setCustomBgPreview] = useState<string | null>(null);
   const [showAfter, setShowAfter] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processProgress, setProcessProgress] = useState(0);
+  const [isProcessed, setIsProcessed] = useState(false);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
     const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("video/")) setVideoFile(file.name);
+    if (file && file.type.startsWith("video/")) {
+      setVideoFile(file);
+      setVideoFileName(file.name);
+      setVideoPreviewUrl(URL.createObjectURL(file));
+      setIsProcessed(false);
+      setShowAfter(false);
+    }
   }, []);
 
   const handleProcess = async () => {
+    if (!videoFile || (!selectedBg && !customBg)) {
+      toast.error("請上傳影片並選擇背景");
+      return;
+    }
     setIsProcessing(true);
-    await new Promise((r) => setTimeout(r, 3000));
+    setProcessProgress(0);
+    setIsProcessed(false);
+
+    const steps = [
+      { progress: 20, msg: "正在分析影片幀..." },
+      { progress: 45, msg: "AI 人物分割處理中..." },
+      { progress: 70, msg: "合成新背景..." },
+      { progress: 90, msg: "最終渲染..." },
+      { progress: 100, msg: "完成！" },
+    ];
+
+    for (const step of steps) {
+      await new Promise((r) => setTimeout(r, 800));
+      setProcessProgress(step.progress);
+      if (step.progress < 100) toast.info(step.msg);
+    }
+
     setIsProcessing(false);
+    setIsProcessed(true);
     setShowAfter(true);
+    toast.success("背景置換完成！切換開關可對比效果。");
   };
+
+  const bgLabel = selectedBg
+    ? presetBackgrounds.find((b) => b.id === selectedBg)?.label
+    : customBg || "";
 
   return (
     <div className="space-y-6">
@@ -53,8 +92,8 @@ export default function BackgroundReplace() {
             onDrop={handleDrop}
           >
             <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-            {videoFile ? (
-              <p className="text-sm text-foreground font-medium">{videoFile}</p>
+            {videoFileName ? (
+              <p className="text-sm text-foreground font-medium">{videoFileName}</p>
             ) : (
               <>
                 <p className="text-sm text-foreground">上傳需要去背的影片</p>
@@ -62,7 +101,16 @@ export default function BackgroundReplace() {
               </>
             )}
             <input type="file" accept="video/*" className="hidden" id="bg-video-upload"
-              onChange={(e) => { if (e.target.files?.[0]) setVideoFile(e.target.files[0].name); }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setVideoFile(file);
+                  setVideoFileName(file.name);
+                  setVideoPreviewUrl(URL.createObjectURL(file));
+                  setIsProcessed(false);
+                  setShowAfter(false);
+                }
+              }}
             />
             <label htmlFor="bg-video-upload">
               <Button variant="outline" size="sm" className="mt-3 cursor-pointer" asChild>
@@ -81,7 +129,7 @@ export default function BackgroundReplace() {
               {presetBackgrounds.map((bg) => (
                 <button
                   key={bg.id}
-                  onClick={() => { setSelectedBg(bg.id); setCustomBg(null); }}
+                  onClick={() => { setSelectedBg(bg.id); setCustomBg(null); setCustomBgPreview(null); }}
                   className={`p-4 rounded-lg border-2 transition-all text-left ${
                     selectedBg === bg.id
                       ? "border-primary bg-primary/10"
@@ -101,31 +149,48 @@ export default function BackgroundReplace() {
               <Label className="text-xs text-muted-foreground mb-2 block">自定義背景</Label>
               <input type="file" accept="image/*" className="hidden" id="custom-bg"
                 onChange={(e) => {
-                  if (e.target.files?.[0]) {
-                    setCustomBg(e.target.files[0].name);
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setCustomBg(file.name);
+                    setCustomBgPreview(URL.createObjectURL(file));
                     setSelectedBg(null);
                   }
                 }}
               />
               <label htmlFor="custom-bg">
                 <div className="border-2 border-dashed border-border rounded-lg p-3 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                  <ImagePlus className="h-5 w-5 mx-auto text-muted-foreground" />
-                  {customBg ? (
-                    <p className="text-xs text-foreground mt-1">{customBg}</p>
+                  {customBgPreview ? (
+                    <img src={customBgPreview} alt="custom bg" className="w-full h-16 object-cover rounded" />
                   ) : (
-                    <p className="text-xs text-muted-foreground mt-1">上傳自定義背景圖</p>
+                    <ImagePlus className="h-5 w-5 mx-auto text-muted-foreground" />
                   )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {customBg || "上傳自定義背景圖"}
+                  </p>
                 </div>
               </label>
             </div>
           </div>
+
+          {isProcessing && (
+            <div className="space-y-2">
+              <Progress value={processProgress} className="h-2" />
+              <p className="text-xs text-muted-foreground text-center">{processProgress}% 處理中...</p>
+            </div>
+          )}
 
           <Button
             className="w-full"
             disabled={!videoFile || (!selectedBg && !customBg) || isProcessing}
             onClick={handleProcess}
           >
-            {isProcessing ? "AI 處理中..." : "開始背景置換"}
+            {isProcessing ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />AI 處理中...</>
+            ) : isProcessed ? (
+              <><CheckCircle className="h-4 w-4 mr-2" />重新處理</>
+            ) : (
+              "開始背景置換"
+            )}
           </Button>
         </div>
 
@@ -133,34 +198,51 @@ export default function BackgroundReplace() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-foreground">效果預覽</h3>
-            <div className="flex items-center gap-2">
-              <Label className="text-xs text-muted-foreground">
-                {showAfter ? "處理後" : "處理前"}
-              </Label>
-              <Switch checked={showAfter} onCheckedChange={setShowAfter} />
-            </div>
+            {isProcessed && (
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground">
+                  {showAfter ? "處理後" : "處理前"}
+                </Label>
+                <Switch checked={showAfter} onCheckedChange={setShowAfter} />
+              </div>
+            )}
           </div>
 
           <div className="aspect-video rounded-xl bg-muted border border-border overflow-hidden relative">
-            {videoFile ? (
+            {videoPreviewUrl ? (
               <div className="absolute inset-0">
-                {showAfter ? (
-                  <div className="w-full h-full bg-gradient-to-br from-violet-900/20 to-blue-900/20 flex items-center justify-center">
-                    <div className="text-center">
-                      <ArrowLeftRight className="h-8 w-8 text-primary mx-auto mb-2" />
-                      <p className="text-sm text-foreground">背景已替換</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {selectedBg ? presetBackgrounds.find((b) => b.id === selectedBg)?.label : customBg || ""}
-                      </p>
+                {showAfter && isProcessed ? (
+                  <div className="w-full h-full relative">
+                    {/* Simulated processed view */}
+                    <video
+                      src={videoPreviewUrl}
+                      className="w-full h-full object-contain"
+                      style={{ filter: "contrast(1.1) saturate(1.2)" }}
+                      controls
+                      muted
+                    />
+                    <div className="absolute inset-0 pointer-events-none" style={{
+                      background: selectedBg === "cyber"
+                        ? "linear-gradient(135deg, rgba(139,92,246,0.15), rgba(59,130,246,0.15))"
+                        : selectedBg === "nature"
+                        ? "linear-gradient(135deg, rgba(34,197,94,0.1), rgba(16,185,129,0.1))"
+                        : selectedBg === "office"
+                        ? "linear-gradient(135deg, rgba(217,119,6,0.1), rgba(245,158,11,0.08))"
+                        : selectedBg === "green"
+                        ? "linear-gradient(135deg, rgba(34,197,94,0.15), rgba(22,163,74,0.1))"
+                        : "none"
+                    }} />
+                    <div className="absolute top-3 right-3 bg-primary/90 text-primary-foreground text-xs px-2 py-1 rounded-full">
+                      已套用: {bgLabel}
                     </div>
                   </div>
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-muted to-card flex items-center justify-center">
-                    <div className="text-center">
-                      <p className="text-sm text-foreground">原始影片</p>
-                      <p className="text-xs text-muted-foreground mt-1">{videoFile}</p>
-                    </div>
-                  </div>
+                  <video
+                    src={videoPreviewUrl}
+                    className="w-full h-full object-contain"
+                    controls
+                    muted
+                  />
                 )}
               </div>
             ) : (
