@@ -37,6 +37,7 @@ export default function VideoTranslation() {
   const [dragActive, setDragActive] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationProgress, setTranslationProgress] = useState(0);
+  const [burnedVideoUrl, setBurnedVideoUrl] = useState<string | null>(null);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
