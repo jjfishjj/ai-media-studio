@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import type { SubtitleEntry } from "@/lib/subtitleExporter";
 
 interface Props {
@@ -8,6 +10,7 @@ interface Props {
   videoFileName: string | null;
   subtitles: SubtitleEntry[];
   dualSubtitle: boolean;
+  burnedVideoUrl?: string | null;
 }
 
 function timeToSeconds(time: string): number {
@@ -21,12 +24,13 @@ function timeToSeconds(time: string): number {
   return h * 3600 + m * 60 + s + ms;
 }
 
-export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle }: Props) {
+export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle, burnedVideoUrl }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [showBurned, setShowBurned] = useState(false);
 
   useEffect(() => {
     if (videoFile) {
@@ -37,6 +41,13 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
       setVideoUrl(null);
     }
   }, [videoFile]);
+
+  // Auto-switch to burned preview when ready
+  useEffect(() => {
+    if (burnedVideoUrl) setShowBurned(true);
+  }, [burnedVideoUrl]);
+
+  const activeSource = showBurned && burnedVideoUrl ? burnedVideoUrl : videoUrl;
 
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
@@ -79,19 +90,30 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
 
   return (
     <div className="space-y-4">
+      {/* Burned video toggle */}
+      {burnedVideoUrl && (
+        <div className="flex items-center gap-2 mb-2">
+          <Switch checked={showBurned} onCheckedChange={setShowBurned} />
+          <Label className="text-xs text-muted-foreground">
+            {showBurned ? "字幕燒錄版" : "原始影片"}
+          </Label>
+        </div>
+      )}
+
       <div className="aspect-video rounded-xl bg-muted border border-border overflow-hidden relative">
-        {videoUrl ? (
+        {activeSource ? (
           <>
             <video
               ref={videoRef}
-              src={videoUrl}
+              src={activeSource}
               className="w-full h-full object-contain bg-black"
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
               onEnded={() => setIsPlaying(false)}
               onClick={togglePlay}
             />
-            {activeSub && (
+            {/* Only show subtitle overlay on original video */}
+            {!showBurned && activeSub && (
               <div className="absolute bottom-4 left-4 right-4 text-center space-y-1 pointer-events-none">
                 <p className="text-sm font-medium text-foreground bg-background/80 inline-block px-3 py-1 rounded">
                   {activeSub.text}
@@ -112,7 +134,7 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
       </div>
 
       <div className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border">
-        <Button variant="ghost" size="icon" onClick={togglePlay} disabled={!videoUrl}>
+        <Button variant="ghost" size="icon" onClick={togglePlay} disabled={!activeSource}>
           {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
         </Button>
         <div

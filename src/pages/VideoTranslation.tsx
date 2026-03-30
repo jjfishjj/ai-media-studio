@@ -37,6 +37,7 @@ export default function VideoTranslation() {
   const [dragActive, setDragActive] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationProgress, setTranslationProgress] = useState(0);
+  const [burnedVideoUrl, setBurnedVideoUrl] = useState<string | null>(null);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -231,7 +232,7 @@ export default function VideoTranslation() {
           {hasTranslation && (
             <>
               <SubtitleExportPanel subtitles={subtitles} />
-              <BurnSubtitlePanel videoFile={videoFile} subtitles={subtitles} />
+              <BurnSubtitlePanel videoFile={videoFile} subtitles={subtitles} onResultReady={setBurnedVideoUrl} />
             </>
           )}
         </div>
@@ -242,6 +243,7 @@ export default function VideoTranslation() {
           videoFileName={videoFileName}
           subtitles={subtitles}
           dualSubtitle={dualSubtitle}
+          burnedVideoUrl={burnedVideoUrl}
         />
 
         {/* Right: Subtitle Editor */}

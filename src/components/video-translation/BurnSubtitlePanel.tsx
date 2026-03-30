@@ -9,9 +9,10 @@ import { toast } from "sonner";
 interface Props {
   videoFile: File | null;
   subtitles: SubtitleEntry[];
+  onResultReady?: (url: string) => void;
 }
 
-export function BurnSubtitlePanel({ videoFile, subtitles }: Props) {
+export function BurnSubtitlePanel({ videoFile, subtitles, onResultReady }: Props) {
   const [isBurning, setIsBurning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
@@ -153,6 +154,7 @@ export function BurnSubtitlePanel({ videoFile, subtitles }: Props) {
       const url = URL.createObjectURL(blob);
       setResultUrl(url);
       setProgress(100);
+      onResultReady?.(url);
       toast.success("影片合成完成！");
 
       URL.revokeObjectURL(videoUrl);
