@@ -9,6 +9,7 @@ import { toast } from "sonner";
 interface Props {
   videoFile: File | null;
   subtitles: SubtitleEntry[];
+  onResultReady?: (url: string) => void;
 }
 
 export function BurnSubtitlePanel({ videoFile, subtitles }: Props) {
