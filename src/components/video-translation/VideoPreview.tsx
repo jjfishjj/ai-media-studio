@@ -90,19 +90,30 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
 
   return (
     <div className="space-y-4">
+      {/* Burned video toggle */}
+      {burnedVideoUrl && (
+        <div className="flex items-center gap-2 mb-2">
+          <Switch checked={showBurned} onCheckedChange={setShowBurned} />
+          <Label className="text-xs text-muted-foreground">
+            {showBurned ? "字幕燒錄版" : "原始影片"}
+          </Label>
+        </div>
+      )}
+
       <div className="aspect-video rounded-xl bg-muted border border-border overflow-hidden relative">
-        {videoUrl ? (
+        {activeSource ? (
           <>
             <video
               ref={videoRef}
-              src={videoUrl}
+              src={activeSource}
               className="w-full h-full object-contain bg-black"
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
               onEnded={() => setIsPlaying(false)}
               onClick={togglePlay}
             />
-            {activeSub && (
+            {/* Only show subtitle overlay on original video */}
+            {!showBurned && activeSub && (
               <div className="absolute bottom-4 left-4 right-4 text-center space-y-1 pointer-events-none">
                 <p className="text-sm font-medium text-foreground bg-background/80 inline-block px-3 py-1 rounded">
                   {activeSub.text}
@@ -123,7 +134,7 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
       </div>
 
       <div className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border">
-        <Button variant="ghost" size="icon" onClick={togglePlay} disabled={!videoUrl}>
+        <Button variant="ghost" size="icon" onClick={togglePlay} disabled={!activeSource}>
           {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
         </Button>
         <div
