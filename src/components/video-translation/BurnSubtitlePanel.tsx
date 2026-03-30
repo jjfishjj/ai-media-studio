@@ -12,7 +12,7 @@ interface Props {
   onResultReady?: (url: string) => void;
 }
 
-export function BurnSubtitlePanel({ videoFile, subtitles }: Props) {
+export function BurnSubtitlePanel({ videoFile, subtitles, onResultReady }: Props) {
   const [isBurning, setIsBurning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
