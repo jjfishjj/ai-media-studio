@@ -1,14 +1,16 @@
 import { useState, useCallback } from "react";
-import { ImagePlus, GripHorizontal, Timer, Sparkles, Film, X } from "lucide-react";
+import { ImagePlus, GripHorizontal, Timer, Sparkles, Film, X, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 
 interface ImageItem {
   id: string;
   name: string;
+  file: File;
   preview: string;
 }
 
@@ -20,14 +22,19 @@ export default function ImageToVideo() {
   const [renderProgress, setRenderProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [resultUrl, setResultUrl] = useState<string | null>(null);
 
   const handleFiles = useCallback((files: FileList) => {
     const remaining = 5 - images.length;
-    const newImages = Array.from(files).slice(0, remaining).map((file) => ({
-      id: crypto.randomUUID(),
-      name: file.name,
-      preview: URL.createObjectURL(file),
-    }));
+    const newImages = Array.from(files)
+      .filter((f) => f.type.startsWith("image/"))
+      .slice(0, remaining)
+      .map((file) => ({
+        id: crypto.randomUUID(),
+        name: file.name,
+        file,
+        preview: URL.createObjectURL(file),
+      }));
     setImages((prev) => [...prev, ...newImages]);
   }, [images.length]);
 
@@ -48,14 +55,106 @@ export default function ImageToVideo() {
     });
   };
 
+  const loadImage = (src: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  };
+
   const handleGenerate = async () => {
+    if (images.length === 0) return;
     setIsRendering(true);
     setRenderProgress(0);
-    for (let i = 0; i <= 100; i += 2) {
-      await new Promise((r) => setTimeout(r, 80));
-      setRenderProgress(i);
+    setResultUrl(null);
+
+    try {
+      const width = 1280;
+      const height = 720;
+      const fps = 30;
+      const frameDuration = duration * fps;
+      const fadeFrames = fadeTransition ? Math.min(15, Math.floor(frameDuration / 4)) : 0;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d")!;
+
+      const stream = canvas.captureStream(fps);
+      const recorder = new MediaRecorder(stream, {
+        mimeType: "video/webm;codecs=vp9",
+      });
+
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      const recordingDone = new Promise<Blob>((resolve) => {
+        recorder.onstop = () => resolve(new Blob(chunks, { type: "video/webm" }));
+      });
+
+      // Load all images
+      const loadedImages = await Promise.all(images.map((img) => loadImage(img.preview)));
+      setRenderProgress(10);
+
+      recorder.start();
+
+      const totalFrames = images.length * frameDuration;
+      let frameCount = 0;
+
+      for (let imgIdx = 0; imgIdx < loadedImages.length; imgIdx++) {
+        const img = loadedImages[imgIdx];
+
+        for (let f = 0; f < frameDuration; f++) {
+          ctx.fillStyle = "#000000";
+          ctx.fillRect(0, 0, width, height);
+
+          // Draw image (cover fit)
+          const scale = Math.max(width / img.width, height / img.height);
+          const dw = img.width * scale;
+          const dh = img.height * scale;
+          const dx = (width - dw) / 2;
+          const dy = (height - dh) / 2;
+
+          let alpha = 1;
+          if (fadeTransition) {
+            if (f < fadeFrames) {
+              alpha = f / fadeFrames;
+            } else if (f > frameDuration - fadeFrames) {
+              alpha = (frameDuration - f) / fadeFrames;
+            }
+          }
+
+          ctx.globalAlpha = alpha;
+          ctx.drawImage(img, dx, dy, dw, dh);
+          ctx.globalAlpha = 1;
+
+          frameCount++;
+          setRenderProgress(10 + Math.floor((frameCount / totalFrames) * 85));
+
+          // Wait for next frame timing
+          await new Promise((r) => setTimeout(r, 1000 / fps));
+        }
+      }
+
+      recorder.stop();
+      const blob = await recordingDone;
+      const url = URL.createObjectURL(blob);
+      setResultUrl(url);
+      setRenderProgress(100);
+      toast.success("影片生成完成！");
+    } catch (err: any) {
+      console.error("Render error:", err);
+      toast.error(err.message || "影片生成失敗");
+    } finally {
+      setTimeout(() => {
+        setIsRendering(false);
+        setRenderProgress(0);
+      }, 500);
     }
-    setIsRendering(false);
   };
 
   return (
@@ -170,6 +269,14 @@ export default function ImageToVideo() {
           >
             {isRendering ? "渲染中..." : "生成影片"}
           </Button>
+          {resultUrl && (
+            <a href={resultUrl} download="slideshow.webm" className="mt-2 block">
+              <Button variant="outline" className="w-full">
+                <Download className="h-4 w-4 mr-2" />
+                下載影片 (WebM)
+              </Button>
+            </a>
+          )}
         </div>
       </div>
     </div>
