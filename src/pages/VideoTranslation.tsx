@@ -232,7 +232,7 @@ export default function VideoTranslation() {
           {hasTranslation && (
             <>
               <SubtitleExportPanel subtitles={subtitles} />
-              <BurnSubtitlePanel videoFile={videoFile} subtitles={subtitles} />
+              <BurnSubtitlePanel videoFile={videoFile} subtitles={subtitles} onResultReady={setBurnedVideoUrl} />
             </>
           )}
         </div>
