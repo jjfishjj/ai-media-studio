@@ -154,6 +154,7 @@ export function BurnSubtitlePanel({ videoFile, subtitles, onResultReady }: Props
       const url = URL.createObjectURL(blob);
       setResultUrl(url);
       setProgress(100);
+      onResultReady?.(url);
       toast.success("影片合成完成！");
 
       URL.revokeObjectURL(videoUrl);
