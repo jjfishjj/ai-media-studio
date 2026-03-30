@@ -24,12 +24,13 @@ function timeToSeconds(time: string): number {
   return h * 3600 + m * 60 + s + ms;
 }
 
-export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle }: Props) {
+export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle, burnedVideoUrl }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [showBurned, setShowBurned] = useState(false);
 
   useEffect(() => {
     if (videoFile) {
