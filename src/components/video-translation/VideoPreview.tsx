@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import type { SubtitleEntry } from "@/lib/subtitleExporter";
 
 interface Props {
@@ -8,6 +10,7 @@ interface Props {
   videoFileName: string | null;
   subtitles: SubtitleEntry[];
   dualSubtitle: boolean;
+  burnedVideoUrl?: string | null;
 }
 
 function timeToSeconds(time: string): number {
