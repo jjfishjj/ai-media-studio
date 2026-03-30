@@ -42,6 +42,13 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
     }
   }, [videoFile]);
 
+  // Auto-switch to burned preview when ready
+  useEffect(() => {
+    if (burnedVideoUrl) setShowBurned(true);
+  }, [burnedVideoUrl]);
+
+  const activeSource = showBurned && burnedVideoUrl ? burnedVideoUrl : videoUrl;
+
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
