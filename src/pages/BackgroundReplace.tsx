@@ -213,25 +213,34 @@ export default function BackgroundReplace() {
               <div className="absolute inset-0">
                 {showAfter && isProcessed ? (
                   <div className="w-full h-full relative">
-                    {/* Simulated processed view */}
+                    {/* Background layer */}
+                    {customBgPreview ? (
+                      <img
+                        src={customBgPreview}
+                        alt="custom background"
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0" style={{
+                        background: selectedBg === "cyber"
+                          ? "linear-gradient(135deg, rgba(139,92,246,0.6), rgba(59,130,246,0.6))"
+                          : selectedBg === "nature"
+                          ? "linear-gradient(135deg, rgba(34,197,94,0.5), rgba(16,185,129,0.5))"
+                          : selectedBg === "office"
+                          ? "linear-gradient(135deg, rgba(217,119,6,0.5), rgba(245,158,11,0.4))"
+                          : selectedBg === "green"
+                          ? "rgba(0, 177, 64, 1)"
+                          : "none"
+                      }} />
+                    )}
+                    {/* Video overlay (simulated keyed subject) */}
                     <video
                       src={videoPreviewUrl}
-                      className="w-full h-full object-contain"
-                      style={{ filter: "contrast(1.1) saturate(1.2)" }}
+                      className="absolute inset-0 w-full h-full object-contain"
+                      style={{ mixBlendMode: "screen", filter: "contrast(1.15) saturate(1.2)" }}
                       controls
                       muted
                     />
-                    <div className="absolute inset-0 pointer-events-none" style={{
-                      background: selectedBg === "cyber"
-                        ? "linear-gradient(135deg, rgba(139,92,246,0.15), rgba(59,130,246,0.15))"
-                        : selectedBg === "nature"
-                        ? "linear-gradient(135deg, rgba(34,197,94,0.1), rgba(16,185,129,0.1))"
-                        : selectedBg === "office"
-                        ? "linear-gradient(135deg, rgba(217,119,6,0.1), rgba(245,158,11,0.08))"
-                        : selectedBg === "green"
-                        ? "linear-gradient(135deg, rgba(34,197,94,0.15), rgba(22,163,74,0.1))"
-                        : "none"
-                    }} />
                     <div className="absolute top-3 right-3 bg-primary/90 text-primary-foreground text-xs px-2 py-1 rounded-full">
                       已套用: {bgLabel}
                     </div>
