@@ -33,9 +33,11 @@ serve(async (req) => {
       fr: "French",
     };
 
-    const sourceLabel = langNames[sourceLang] || sourceLang || "the spoken language";
+    const sourceLabel = sourceLang === "auto" || !sourceLang
+      ? "the spoken language (auto-detect)"
+      : (langNames[sourceLang] || sourceLang);
 
-    const prompt = `You are a professional transcription assistant. Listen to this audio and transcribe it into ${sourceLabel}.
+    const prompt = `You are a professional transcription assistant. Listen to this audio and transcribe it into ${sourceLabel === "the spoken language (auto-detect)" ? "the original spoken language (detect automatically)" : sourceLabel}.
 
 Return the transcription as a structured list of subtitle segments with timestamps.
 

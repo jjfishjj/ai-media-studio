@@ -15,6 +15,7 @@ import { SubtitleExportPanel } from "@/components/video-translation/SubtitleExpo
 import { BurnSubtitlePanel } from "@/components/video-translation/BurnSubtitlePanel";
 
 const LANGUAGES = [
+  { value: "auto", label: "自動偵測" },
   { value: "zh", label: "中文" },
   { value: "en", label: "English" },
   { value: "ja", label: "日本語" },
@@ -24,10 +25,12 @@ const LANGUAGES = [
   { value: "fr", label: "Français" },
 ];
 
+const TARGET_LANGUAGES = LANGUAGES.filter((l) => l.value !== "auto");
+
 export default function VideoTranslation() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoFileName, setVideoFileName] = useState<string | null>(null);
-  const [sourceLang, setSourceLang] = useState("en");
+  const [sourceLang, setSourceLang] = useState("auto");
   const [targetVoice, setTargetVoice] = useState("zh");
   const [subtitle1, setSubtitle1] = useState("en");
   const [subtitle2, setSubtitle2] = useState("zh");
@@ -190,7 +193,7 @@ export default function VideoTranslation() {
               <Select value={targetVoice} onValueChange={setTargetVoice}>
                 <SelectTrigger className="bg-muted border-border"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {LANGUAGES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+                  {TARGET_LANGUAGES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -205,7 +208,7 @@ export default function VideoTranslation() {
                   <Select value={subtitle1} onValueChange={setSubtitle1}>
                     <SelectTrigger className="bg-muted border-border text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {LANGUAGES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+                      {TARGET_LANGUAGES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -214,7 +217,7 @@ export default function VideoTranslation() {
                   <Select value={subtitle2} onValueChange={setSubtitle2}>
                     <SelectTrigger className="bg-muted border-border text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {LANGUAGES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+                      {TARGET_LANGUAGES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
