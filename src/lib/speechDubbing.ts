@@ -44,6 +44,16 @@ export class DubbingController {
   private lastSpokenId: number | null = null;
   private animFrameId: number | null = null;
   private active = false;
+  private selectedVoice: SpeechSynthesisVoice | null = null;
+  private rate: number = 1.1;
+
+  setVoice(voice: SpeechSynthesisVoice | null) {
+    this.selectedVoice = voice;
+  }
+
+  setRate(rate: number) {
+    this.rate = rate;
+  }
 
   start(
     video: HTMLVideoElement,
