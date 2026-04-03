@@ -30,7 +30,7 @@ const TARGET_LANGUAGES = LANGUAGES.filter((l) => l.value !== "auto");
 export default function VideoTranslation() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoFileName, setVideoFileName] = useState<string | null>(null);
-  const [sourceLang, setSourceLang] = useState("en");
+  const [sourceLang, setSourceLang] = useState("auto");
   const [targetVoice, setTargetVoice] = useState("zh");
   const [subtitle1, setSubtitle1] = useState("en");
   const [subtitle2, setSubtitle2] = useState("zh");
