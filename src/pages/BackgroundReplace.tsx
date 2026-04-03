@@ -1,10 +1,11 @@
-import { useState, useCallback } from "react";
-import { Upload, Layers, Building2, Zap, Trees, Square, ImagePlus, ArrowLeftRight, Loader2, CheckCircle } from "lucide-react";
+import { useState, useCallback, useRef } from "react";
+import { Upload, Layers, Building2, Zap, Trees, Square, ImagePlus, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { BackgroundFitSelector, type BgFitMode } from "@/components/background-replace/BackgroundFitSelector";
+import { VideoPreviewPanel } from "@/components/background-replace/VideoPreviewPanel";
 
 const presetBackgrounds = [
   { id: "office", label: "辦公室", icon: Building2, color: "from-amber-900/30 to-amber-800/10" },
@@ -25,19 +26,41 @@ export default function BackgroundReplace() {
   const [processProgress, setProcessProgress] = useState(0);
   const [isProcessed, setIsProcessed] = useState(false);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [fitMode, setFitMode] = useState<BgFitMode>("cover");
+  const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [videoOrientation, setVideoOrientation] = useState<"landscape" | "portrait" | "square" | null>(null);
+  const probeVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  const detectVideoDimensions = useCallback((url: string) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      setVideoDimensions({ width: w, height: h });
+      setVideoOrientation(w > h ? "landscape" : w < h ? "portrait" : "square");
+      URL.revokeObjectURL(video.src);
+    };
+    video.src = url;
+    probeVideoRef.current = video;
+  }, []);
+
+  const handleVideoSelected = useCallback((file: File) => {
+    setVideoFile(file);
+    setVideoFileName(file.name);
+    const url = URL.createObjectURL(file);
+    setVideoPreviewUrl(url);
+    detectVideoDimensions(URL.createObjectURL(file));
+    setIsProcessed(false);
+    setShowAfter(false);
+  }, [detectVideoDimensions]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
     const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("video/")) {
-      setVideoFile(file);
-      setVideoFileName(file.name);
-      setVideoPreviewUrl(URL.createObjectURL(file));
-      setIsProcessed(false);
-      setShowAfter(false);
-    }
-  }, []);
+    if (file && file.type.startsWith("video/")) handleVideoSelected(file);
+  }, [handleVideoSelected]);
 
   const handleProcess = async () => {
     if (!videoFile || (!selectedBg && !customBg)) {
@@ -69,14 +92,14 @@ export default function BackgroundReplace() {
   };
 
   const bgLabel = selectedBg
-    ? presetBackgrounds.find((b) => b.id === selectedBg)?.label
+    ? presetBackgrounds.find((b) => b.id === selectedBg)?.label ?? ""
     : customBg || "";
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">AI 影片背景置換</h1>
-        <p className="text-muted-foreground mt-1">智慧去背並替換影片背景</p>
+        <p className="text-muted-foreground mt-1">智慧去背並替換影片背景，自動適配直式/橫式格式</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -103,13 +126,7 @@ export default function BackgroundReplace() {
             <input type="file" accept="video/*" className="hidden" id="bg-video-upload"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) {
-                  setVideoFile(file);
-                  setVideoFileName(file.name);
-                  setVideoPreviewUrl(URL.createObjectURL(file));
-                  setIsProcessed(false);
-                  setShowAfter(false);
-                }
+                if (file) handleVideoSelected(file);
               }}
             />
             <label htmlFor="bg-video-upload">
@@ -170,6 +187,18 @@ export default function BackgroundReplace() {
                 </div>
               </label>
             </div>
+
+            {/* Background fit mode */}
+            {(customBgPreview || selectedBg) && videoDimensions && (
+              <div className="pt-3 border-t border-border">
+                <BackgroundFitSelector
+                  fitMode={fitMode}
+                  onFitModeChange={setFitMode}
+                  videoOrientation={videoOrientation}
+                  videoDimensions={videoDimensions}
+                />
+              </div>
+            )}
           </div>
 
           {isProcessing && (
@@ -195,79 +224,17 @@ export default function BackgroundReplace() {
         </div>
 
         {/* Right: Preview */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">效果預覽</h3>
-            {isProcessed && (
-              <div className="flex items-center gap-2">
-                <Label className="text-xs text-muted-foreground">
-                  {showAfter ? "處理後" : "處理前"}
-                </Label>
-                <Switch checked={showAfter} onCheckedChange={setShowAfter} />
-              </div>
-            )}
-          </div>
-
-          <div className="aspect-video rounded-xl bg-muted border border-border overflow-hidden relative">
-            {videoPreviewUrl ? (
-              <div className="absolute inset-0">
-                {showAfter && isProcessed ? (
-                  <div className="w-full h-full relative">
-                    {/* Background layer */}
-                    {customBgPreview ? (
-                      <img
-                        src={customBgPreview}
-                        alt="custom background"
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0" style={{
-                        background: selectedBg === "cyber"
-                          ? "linear-gradient(135deg, rgba(139,92,246,0.6), rgba(59,130,246,0.6))"
-                          : selectedBg === "nature"
-                          ? "linear-gradient(135deg, rgba(34,197,94,0.5), rgba(16,185,129,0.5))"
-                          : selectedBg === "office"
-                          ? "linear-gradient(135deg, rgba(217,119,6,0.5), rgba(245,158,11,0.4))"
-                          : selectedBg === "green"
-                          ? "rgba(0, 177, 64, 1)"
-                          : "none"
-                      }} />
-                    )}
-                    {/* Video overlay (simulated keyed subject) */}
-                    <video
-                      src={videoPreviewUrl}
-                      className="absolute inset-0 w-full h-full object-contain"
-                      style={{ mixBlendMode: "screen", filter: "contrast(1.15) saturate(1.2)" }}
-                      controls
-                      muted
-                    />
-                    <div className="absolute top-3 right-3 bg-primary/90 text-primary-foreground text-xs px-2 py-1 rounded-full">
-                      已套用: {bgLabel}
-                    </div>
-                  </div>
-                ) : (
-                  <video
-                    src={videoPreviewUrl}
-                    className="w-full h-full object-contain"
-                    controls
-                    muted
-                  />
-                )}
-              </div>
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <p className="text-sm text-muted-foreground">請先上傳影片</p>
-              </div>
-            )}
-          </div>
-
-          {/* Info */}
-          <div className="p-4 rounded-xl bg-card border border-border text-xs text-muted-foreground space-y-1">
-            <p>• AI 去背使用深度學習模型進行人物分割</p>
-            <p>• 支援即時預覽處理前後效果對比</p>
-            <p>• 預留 Cloudinary / OpenAI API 對接介面</p>
-          </div>
-        </div>
+        <VideoPreviewPanel
+          videoPreviewUrl={videoPreviewUrl}
+          customBgPreview={customBgPreview}
+          selectedBg={selectedBg}
+          bgLabel={bgLabel}
+          showAfter={showAfter}
+          setShowAfter={setShowAfter}
+          isProcessed={isProcessed}
+          fitMode={fitMode}
+          videoOrientation={videoOrientation}
+        />
       </div>
     </div>
   );
