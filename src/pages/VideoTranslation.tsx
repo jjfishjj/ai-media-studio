@@ -208,7 +208,7 @@ export default function VideoTranslation() {
                   <Select value={subtitle1} onValueChange={setSubtitle1}>
                     <SelectTrigger className="bg-muted border-border text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {LANGUAGES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+                      {TARGET_LANGUAGES.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
