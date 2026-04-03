@@ -15,6 +15,7 @@ import { SubtitleExportPanel } from "@/components/video-translation/SubtitleExpo
 import { BurnSubtitlePanel } from "@/components/video-translation/BurnSubtitlePanel";
 
 const LANGUAGES = [
+  { value: "auto", label: "自動偵測" },
   { value: "zh", label: "中文" },
   { value: "en", label: "English" },
   { value: "ja", label: "日本語" },
@@ -23,6 +24,8 @@ const LANGUAGES = [
   { value: "de", label: "Deutsch" },
   { value: "fr", label: "Français" },
 ];
+
+const TARGET_LANGUAGES = LANGUAGES.filter((l) => l.value !== "auto");
 
 export default function VideoTranslation() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
