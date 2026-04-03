@@ -267,6 +267,20 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
         </span>
       </div>
 
+      {/* Download button */}
+      {burnedVideoUrl && (
+        <Button
+          variant="outline"
+          className="w-full border-primary/30 text-primary hover:bg-primary/10"
+          asChild
+        >
+          <a href={burnedVideoUrl} download="translated_video.webm">
+            <Download className="h-4 w-4 mr-2" />
+            下載影片到本機
+          </a>
+        </Button>
+      )}
+
       {/* Voice selection panel */}
       {dubbingEnabled && !showBurned && (
         <div className="p-3 rounded-xl bg-card border border-border space-y-3">
