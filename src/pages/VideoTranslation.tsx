@@ -244,6 +244,7 @@ export default function VideoTranslation() {
           subtitles={subtitles}
           dualSubtitle={dualSubtitle}
           burnedVideoUrl={burnedVideoUrl}
+          targetLang={targetVoice}
         />
 
         {/* Right: Subtitle Editor */}
