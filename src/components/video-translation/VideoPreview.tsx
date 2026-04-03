@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
-import { Play, Pause, Volume2, VolumeX, Mic, Subtitles, Eye, EyeOff } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Mic, Subtitles, Eye, EyeOff, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
