@@ -44,6 +44,16 @@ export class DubbingController {
   private lastSpokenId: number | null = null;
   private animFrameId: number | null = null;
   private active = false;
+  private selectedVoice: SpeechSynthesisVoice | null = null;
+  private rate: number = 1.1;
+
+  setVoice(voice: SpeechSynthesisVoice | null) {
+    this.selectedVoice = voice;
+  }
+
+  setRate(rate: number) {
+    this.rate = rate;
+  }
 
   start(
     video: HTMLVideoElement,
@@ -84,13 +94,17 @@ export class DubbingController {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(activeSub.translated);
       utterance.lang = getSpeechLang(this.lang);
-      utterance.rate = 1.1;
+      utterance.rate = this.rate;
       utterance.pitch = 1;
 
-      // Try to pick a voice for this language
-      const voices = getAvailableVoices(this.lang);
-      if (voices.length > 0) {
-        utterance.voice = voices[0];
+      // Use selected voice or fall back to first available
+      if (this.selectedVoice) {
+        utterance.voice = this.selectedVoice;
+      } else {
+        const voices = getAvailableVoices(this.lang);
+        if (voices.length > 0) {
+          utterance.voice = voices[0];
+        }
       }
 
       window.speechSynthesis.speak(utterance);
