@@ -1,10 +1,12 @@
-import { useRef, useState, useEffect, useCallback } from "react";
-import { Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { Play, Pause, Volume2, VolumeX, Mic, Subtitles, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import type { SubtitleEntry } from "@/lib/subtitleExporter";
-import { DubbingController, timeToSeconds } from "@/lib/speechDubbing";
+import { DubbingController, timeToSeconds, getAvailableVoices, getSpeechLang } from "@/lib/speechDubbing";
 
 interface Props {
   videoFile: File | null;
@@ -15,6 +17,13 @@ interface Props {
   targetLang?: string;
 }
 
+type SubtitleMode = "both" | "original" | "translated" | "none";
+
+const SUBTITLE_POSITIONS = [
+  { value: "bottom", label: "底部" },
+  { value: "top", label: "頂部" },
+] as const;
+
 export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle, burnedVideoUrl, targetLang = "zh" }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const dubbingRef = useRef<DubbingController>(new DubbingController());
@@ -24,6 +33,43 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [showBurned, setShowBurned] = useState(false);
   const [dubbingEnabled, setDubbingEnabled] = useState(false);
+
+  // Voice selection
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState<string>("default");
+  const [speechRate, setSpeechRate] = useState(1.0);
+
+  // Subtitle display
+  const [subtitleMode, setSubtitleMode] = useState<SubtitleMode>("both");
+  const [subtitlePosition, setSubtitlePosition] = useState<"bottom" | "top">("bottom");
+  const [subtitleSize, setSubtitleSize] = useState(14); // px
+  const [subtitleOpacity, setSubtitleOpacity] = useState(80); // percent for bg
+
+  // Load available voices
+  useEffect(() => {
+    const loadVoices = () => {
+      const available = getAvailableVoices(targetLang);
+      setVoices(available);
+      if (available.length > 0 && selectedVoiceURI === "default") {
+        setSelectedVoiceURI(available[0].voiceURI);
+      }
+    };
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    return () => { window.speechSynthesis.onvoiceschanged = null; };
+  }, [targetLang]);
+
+  // Reset voice selection when target language changes
+  useEffect(() => {
+    setSelectedVoiceURI("default");
+  }, [targetLang]);
+
+  // Update dubbing controller settings
+  useEffect(() => {
+    const voice = voices.find(v => v.voiceURI === selectedVoiceURI);
+    dubbingRef.current.setVoice(voice || null);
+    dubbingRef.current.setRate(speechRate);
+  }, [selectedVoiceURI, speechRate, voices]);
 
   useEffect(() => {
     if (videoFile) {
@@ -39,7 +85,6 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
     if (burnedVideoUrl) setShowBurned(true);
   }, [burnedVideoUrl]);
 
-  // Cleanup dubbing on unmount
   useEffect(() => {
     return () => dubbingRef.current.stop();
   }, []);
@@ -89,7 +134,6 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
     const rect = e.currentTarget.getBoundingClientRect();
     const ratio = (e.clientX - rect.left) / rect.width;
     videoRef.current.currentTime = ratio * duration;
-    // Reset last spoken so TTS re-triggers on new position
     if (dubbingEnabled) {
       dubbingRef.current.stop();
       if (isPlaying && !showBurned) {
@@ -118,9 +162,15 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
 
   const hasTranslation = subtitles.some((s) => s.translated);
 
+  // Should we show subtitles on the video?
+  const showOriginalSub = subtitleMode === "both" || subtitleMode === "original";
+  const showTranslatedSub = subtitleMode === "both" || subtitleMode === "translated";
+
+  const subtitlePositionClass = subtitlePosition === "top" ? "top-4" : "bottom-4";
+
   return (
     <div className="space-y-4">
-      {/* Toggle controls */}
+      {/* Toggle controls row */}
       <div className="flex items-center gap-4 flex-wrap">
         {burnedVideoUrl && (
           <div className="flex items-center gap-2">
@@ -135,12 +185,13 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
             <Switch checked={dubbingEnabled} onCheckedChange={handleDubbingToggle} />
             <Label className="text-xs text-muted-foreground flex items-center gap-1">
               {dubbingEnabled ? <Volume2 className="h-3 w-3" /> : <VolumeX className="h-3 w-3" />}
-              AI 配音預覽
+              AI 配音
             </Label>
           </div>
         )}
       </div>
 
+      {/* Video player */}
       <div className="aspect-video rounded-xl bg-muted border border-border overflow-hidden relative">
         {activeSource ? (
           <>
@@ -153,13 +204,30 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
               onEnded={handleEnded}
               onClick={togglePlay}
             />
-            {!showBurned && activeSub && (
-              <div className="absolute bottom-4 left-4 right-4 text-center space-y-1 pointer-events-none">
-                <p className="text-sm font-medium text-foreground bg-background/80 inline-block px-3 py-1 rounded">
-                  {activeSub.text}
-                </p>
-                {dualSubtitle && activeSub.translated && (
-                  <p className="text-xs text-primary bg-background/80 inline-block px-3 py-1 rounded">
+            {/* Subtitle overlay */}
+            {!showBurned && activeSub && subtitleMode !== "none" && (
+              <div className={`absolute ${subtitlePositionClass} left-2 right-2 text-center space-y-1 pointer-events-none`}>
+                {showOriginalSub && activeSub.text && (
+                  <p
+                    className="font-medium text-white inline-block px-3 py-1.5 rounded-md leading-relaxed"
+                    style={{
+                      fontSize: `${subtitleSize}px`,
+                      backgroundColor: `rgba(0, 0, 0, ${subtitleOpacity / 100})`,
+                      textShadow: "0 1px 3px rgba(0,0,0,0.8)",
+                    }}
+                  >
+                    {activeSub.text}
+                  </p>
+                )}
+                {showTranslatedSub && activeSub.translated && (
+                  <p
+                    className="text-primary inline-block px-3 py-1.5 rounded-md leading-relaxed"
+                    style={{
+                      fontSize: `${Math.max(subtitleSize - 2, 10)}px`,
+                      backgroundColor: `rgba(0, 0, 0, ${subtitleOpacity / 100})`,
+                      textShadow: "0 1px 3px rgba(0,0,0,0.6)",
+                    }}
+                  >
                     {activeSub.translated}
                   </p>
                 )}
@@ -180,6 +248,7 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
         )}
       </div>
 
+      {/* Playback controls */}
       <div className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border">
         <Button variant="ghost" size="icon" onClick={togglePlay} disabled={!activeSource}>
           {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
@@ -198,10 +267,122 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
         </span>
       </div>
 
-      {dubbingEnabled && (
-        <p className="text-xs text-muted-foreground italic">
-          💡 配音使用瀏覽器內建語音合成，播放時會靜音原始音訊並朗讀翻譯字幕。如需高品質配音，建議連接 ElevenLabs。
-        </p>
+      {/* Voice selection panel */}
+      {dubbingEnabled && !showBurned && (
+        <div className="p-3 rounded-xl bg-card border border-border space-y-3">
+          <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+            <Mic className="h-3.5 w-3.5 text-primary" />
+            配音聲音設定
+          </h4>
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">語音模板</Label>
+            <Select value={selectedVoiceURI} onValueChange={setSelectedVoiceURI}>
+              <SelectTrigger className="bg-muted border-border text-xs h-8">
+                <SelectValue placeholder="選擇聲音" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">系統預設</SelectItem>
+                {voices.map((v) => (
+                  <SelectItem key={v.voiceURI} value={v.voiceURI}>
+                    {v.name} {v.lang}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {voices.length === 0 && (
+              <p className="text-xs text-muted-foreground/70 italic">
+                此語言目前無可用語音，將使用系統預設
+              </p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground">語速</Label>
+              <span className="text-xs text-muted-foreground font-mono">{speechRate.toFixed(1)}x</span>
+            </div>
+            <Slider
+              value={[speechRate]}
+              onValueChange={([v]) => setSpeechRate(v)}
+              min={0.5}
+              max={2.0}
+              step={0.1}
+              className="w-full"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground/70 italic">
+            💡 語音來自瀏覽器內建 TTS。如需高品質或保留原聲音色，建議連接 ElevenLabs。
+          </p>
+        </div>
+      )}
+
+      {/* Subtitle display settings */}
+      {subtitles.length > 0 && !showBurned && (
+        <div className="p-3 rounded-xl bg-card border border-border space-y-3">
+          <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+            <Subtitles className="h-3.5 w-3.5 text-primary" />
+            字幕顯示設定
+          </h4>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">顯示模式</Label>
+              <Select value={subtitleMode} onValueChange={(v) => setSubtitleMode(v as SubtitleMode)}>
+                <SelectTrigger className="bg-muted border-border text-xs h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="both">雙語字幕</SelectItem>
+                  <SelectItem value="original">僅原文</SelectItem>
+                  <SelectItem value="translated">僅翻譯</SelectItem>
+                  <SelectItem value="none">隱藏字幕</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">字幕位置</Label>
+              <Select value={subtitlePosition} onValueChange={(v) => setSubtitlePosition(v as "top" | "bottom")}>
+                <SelectTrigger className="bg-muted border-border text-xs h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUBTITLE_POSITIONS.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground">字體大小</Label>
+              <span className="text-xs text-muted-foreground font-mono">{subtitleSize}px</span>
+            </div>
+            <Slider
+              value={[subtitleSize]}
+              onValueChange={([v]) => setSubtitleSize(v)}
+              min={10}
+              max={24}
+              step={1}
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground">背景透明度</Label>
+              <span className="text-xs text-muted-foreground font-mono">{subtitleOpacity}%</span>
+            </div>
+            <Slider
+              value={[subtitleOpacity]}
+              onValueChange={([v]) => setSubtitleOpacity(v)}
+              min={0}
+              max={100}
+              step={5}
+              className="w-full"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground/70 italic">
+            💡 若字幕遮擋畫面，可調整位置至頂部、降低背景透明度，或選擇僅顯示翻譯字幕。
+          </p>
+        </div>
       )}
     </div>
   );
