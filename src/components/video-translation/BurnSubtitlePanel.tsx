@@ -3,16 +3,17 @@ import { Film, Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import type { SubtitleEntry } from "@/lib/subtitleExporter";
-import { generateSRT } from "@/lib/subtitleExporter";
+import { downloadUrlAsFile } from "@/lib/download";
 import { toast } from "sonner";
 
 interface Props {
   videoFile: File | null;
   subtitles: SubtitleEntry[];
+  subtitleMode?: "both" | "original" | "translated" | "none";
   onResultReady?: (url: string) => void;
 }
 
-export function BurnSubtitlePanel({ videoFile, subtitles, onResultReady }: Props) {
+export function BurnSubtitlePanel({ videoFile, subtitles, subtitleMode = "both", onResultReady }: Props) {
   const [isBurning, setIsBurning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
@@ -32,9 +33,6 @@ export function BurnSubtitlePanel({ videoFile, subtitles, onResultReady }: Props
     setResultUrl(null);
 
     try {
-      // Generate SRT content for burning
-      const srtContent = generateSRT(subtitles, "both");
-
       // Use client-side approach with canvas + MediaRecorder
       toast.info("正在合成影片，這可能需要一些時間...");
       setProgress(20);
@@ -93,6 +91,8 @@ export function BurnSubtitlePanel({ videoFile, subtitles, onResultReady }: Props
         });
 
         if (activeSub) {
+          const showOriginal = subtitleMode === "both" || subtitleMode === "original";
+          const showTranslated = subtitleMode === "both" || subtitleMode === "translated";
           const fontSize = Math.max(16, Math.floor(canvas.height / 20));
           ctx.font = `bold ${fontSize}px sans-serif`;
           ctx.textAlign = "center";
@@ -102,7 +102,7 @@ export function BurnSubtitlePanel({ videoFile, subtitles, onResultReady }: Props
           let y = canvas.height - 40;
 
           // Draw translated text
-          if (activeSub.translated) {
+          if (showTranslated && activeSub.translated) {
             const translatedFontSize = Math.max(14, Math.floor(fontSize * 0.85));
             ctx.font = `${translatedFontSize}px sans-serif`;
             ctx.strokeStyle = "rgba(0,0,0,0.8)";
@@ -114,12 +114,14 @@ export function BurnSubtitlePanel({ videoFile, subtitles, onResultReady }: Props
           }
 
           // Draw original text
-          ctx.font = `bold ${fontSize}px sans-serif`;
-          ctx.strokeStyle = "rgba(0,0,0,0.8)";
-          ctx.lineWidth = 3;
-          ctx.strokeText(activeSub.text, x, y);
-          ctx.fillStyle = "#ffffff";
-          ctx.fillText(activeSub.text, x, y);
+          if (showOriginal) {
+            ctx.font = `bold ${fontSize}px sans-serif`;
+            ctx.strokeStyle = "rgba(0,0,0,0.8)";
+            ctx.lineWidth = 3;
+            ctx.strokeText(activeSub.text, x, y);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillText(activeSub.text, x, y);
+          }
         }
 
         setProgress(20 + Math.floor((currentTime / (video.duration || 1)) * 70));
@@ -170,6 +172,17 @@ export function BurnSubtitlePanel({ videoFile, subtitles, onResultReady }: Props
     }
   };
 
+  const handleDownload = async () => {
+    if (!resultUrl) return;
+
+    try {
+      await downloadUrlAsFile(resultUrl, "translated_video.webm");
+      toast.success("已開始下載影片");
+    } catch (err: any) {
+      toast.error(err?.message || "影片下載失敗");
+    }
+  };
+
   return (
     <div className="p-4 rounded-xl bg-card border border-border space-y-3">
       <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -198,12 +211,10 @@ export function BurnSubtitlePanel({ videoFile, subtitles, onResultReady }: Props
       </Button>
       {isBurning && <Progress value={progress} className="mt-2" />}
       {resultUrl && (
-        <a href={resultUrl} download="translated_video.webm">
-          <Button variant="outline" className="w-full mt-2">
-            <Download className="h-4 w-4 mr-2" />
-            下載翻譯影片 (WebM)
-          </Button>
-        </a>
+        <Button variant="outline" className="w-full mt-2" onClick={handleDownload}>
+          <Download className="h-4 w-4 mr-2" />
+          下載翻譯影片 (WebM)
+        </Button>
       )}
     </div>
   );

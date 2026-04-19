@@ -5,8 +5,10 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { toast } from "sonner";
 import type { SubtitleEntry } from "@/lib/subtitleExporter";
 import { DubbingController, timeToSeconds, getAvailableVoices, getSpeechLang } from "@/lib/speechDubbing";
+import { downloadUrlAsFile } from "@/lib/download";
 
 interface Props {
   videoFile: File | null;
@@ -14,6 +16,8 @@ interface Props {
   subtitles: SubtitleEntry[];
   dualSubtitle: boolean;
   burnedVideoUrl?: string | null;
+  subtitleMode?: SubtitleMode;
+  onSubtitleModeChange?: (mode: SubtitleMode) => void;
   targetLang?: string;
 }
 
@@ -24,7 +28,7 @@ const SUBTITLE_POSITIONS = [
   { value: "top", label: "頂部" },
 ] as const;
 
-export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle, burnedVideoUrl, targetLang = "zh" }: Props) {
+export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle, burnedVideoUrl, subtitleMode: controlledSubtitleMode, onSubtitleModeChange, targetLang = "zh" }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const dubbingRef = useRef<DubbingController>(new DubbingController());
   const [isPlaying, setIsPlaying] = useState(false);
@@ -40,7 +44,7 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
   const [speechRate, setSpeechRate] = useState(1.0);
 
   // Subtitle display
-  const [subtitleMode, setSubtitleMode] = useState<SubtitleMode>("both");
+  const [subtitleModeState, setSubtitleModeState] = useState<SubtitleMode>("both");
   const [subtitlePosition, setSubtitlePosition] = useState<"bottom" | "top">("bottom");
   const [subtitleSize, setSubtitleSize] = useState(14); // px
   const [subtitleOpacity, setSubtitleOpacity] = useState(80); // percent for bg
@@ -161,6 +165,23 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
   };
 
   const hasTranslation = subtitles.some((s) => s.translated);
+  const subtitleMode = controlledSubtitleMode ?? subtitleModeState;
+
+  const handleSubtitleModeChange = (mode: SubtitleMode) => {
+    onSubtitleModeChange?.(mode);
+    if (!onSubtitleModeChange) setSubtitleModeState(mode);
+  };
+
+  const handleDownload = async () => {
+    if (!burnedVideoUrl) return;
+
+    try {
+      await downloadUrlAsFile(burnedVideoUrl, "translated_video.webm");
+      toast.success("已開始下載影片");
+    } catch (err: any) {
+      toast.error(err?.message || "影片下載失敗");
+    }
+  };
 
   // Should we show subtitles on the video?
   const showOriginalSub = subtitleMode === "both" || subtitleMode === "original";
@@ -272,12 +293,12 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
         <Button
           variant="outline"
           className="w-full border-primary/30 text-primary hover:bg-primary/10"
-          asChild
+          onClick={handleDownload}
         >
-          <a href={burnedVideoUrl} download="translated_video.webm">
+          <>
             <Download className="h-4 w-4 mr-2" />
             下載影片到本機
-          </a>
+          </>
         </Button>
       )}
 
@@ -339,7 +360,7 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">顯示模式</Label>
-              <Select value={subtitleMode} onValueChange={(v) => setSubtitleMode(v as SubtitleMode)}>
+              <Select value={subtitleMode} onValueChange={(v) => handleSubtitleModeChange(v as SubtitleMode)}>
                 <SelectTrigger className="bg-muted border-border text-xs h-8">
                   <SelectValue />
                 </SelectTrigger>
