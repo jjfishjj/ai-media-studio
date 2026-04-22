@@ -84,7 +84,9 @@ export class DubbingController {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
     }
-    window.speechSynthesis.cancel();
+    if (isSpeechSynthesisSupported()) {
+      window.speechSynthesis.cancel();
+    }
     this.lastSpokenId = null;
   }
 
