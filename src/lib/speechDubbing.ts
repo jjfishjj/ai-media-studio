@@ -14,11 +14,20 @@ export function getSpeechLang(lang: string): string {
   return langVoiceMap[lang] || lang;
 }
 
+export function isSpeechSynthesisSupported(): boolean {
+  return typeof window !== "undefined" && "speechSynthesis" in window && !!window.speechSynthesis;
+}
+
 export function getAvailableVoices(lang: string): SpeechSynthesisVoice[] {
-  const speechLang = getSpeechLang(lang);
-  return window.speechSynthesis
-    .getVoices()
-    .filter((v) => v.lang.startsWith(speechLang.split("-")[0]));
+  if (!isSpeechSynthesisSupported()) return [];
+  try {
+    const speechLang = getSpeechLang(lang);
+    return window.speechSynthesis
+      .getVoices()
+      .filter((v) => v.lang.startsWith(speechLang.split("-")[0]));
+  } catch {
+    return [];
+  }
 }
 
 export function timeToSeconds(time: string): number {
