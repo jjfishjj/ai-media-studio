@@ -59,8 +59,14 @@ export function VideoPreview({ videoFile, videoFileName, subtitles, dualSubtitle
       }
     };
     loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-    return () => { window.speechSynthesis.onvoiceschanged = null; };
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    return () => {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
   }, [targetLang]);
 
   // Reset voice selection when target language changes

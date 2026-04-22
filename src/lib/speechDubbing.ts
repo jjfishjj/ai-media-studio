@@ -14,11 +14,20 @@ export function getSpeechLang(lang: string): string {
   return langVoiceMap[lang] || lang;
 }
 
+export function isSpeechSynthesisSupported(): boolean {
+  return typeof window !== "undefined" && "speechSynthesis" in window && !!window.speechSynthesis;
+}
+
 export function getAvailableVoices(lang: string): SpeechSynthesisVoice[] {
-  const speechLang = getSpeechLang(lang);
-  return window.speechSynthesis
-    .getVoices()
-    .filter((v) => v.lang.startsWith(speechLang.split("-")[0]));
+  if (!isSpeechSynthesisSupported()) return [];
+  try {
+    const speechLang = getSpeechLang(lang);
+    return window.speechSynthesis
+      .getVoices()
+      .filter((v) => v.lang.startsWith(speechLang.split("-")[0]));
+  } catch {
+    return [];
+  }
 }
 
 export function timeToSeconds(time: string): number {
@@ -75,7 +84,9 @@ export class DubbingController {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
     }
-    window.speechSynthesis.cancel();
+    if (isSpeechSynthesisSupported()) {
+      window.speechSynthesis.cancel();
+    }
     this.lastSpokenId = null;
   }
 
@@ -91,23 +102,24 @@ export class DubbingController {
     );
 
     if (activeSub && activeSub.id !== this.lastSpokenId) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(activeSub.translated);
-      utterance.lang = getSpeechLang(this.lang);
-      utterance.rate = this.rate;
-      utterance.pitch = 1;
+      if (isSpeechSynthesisSupported()) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(activeSub.translated);
+        utterance.lang = getSpeechLang(this.lang);
+        utterance.rate = this.rate;
+        utterance.pitch = 1;
 
-      // Use selected voice or fall back to first available
-      if (this.selectedVoice) {
-        utterance.voice = this.selectedVoice;
-      } else {
-        const voices = getAvailableVoices(this.lang);
-        if (voices.length > 0) {
-          utterance.voice = voices[0];
+        if (this.selectedVoice) {
+          utterance.voice = this.selectedVoice;
+        } else {
+          const voices = getAvailableVoices(this.lang);
+          if (voices.length > 0) {
+            utterance.voice = voices[0];
+          }
         }
-      }
 
-      window.speechSynthesis.speak(utterance);
+        window.speechSynthesis.speak(utterance);
+      }
       this.lastSpokenId = activeSub.id;
     } else if (!activeSub) {
       this.lastSpokenId = null;
