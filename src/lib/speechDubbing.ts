@@ -102,23 +102,24 @@ export class DubbingController {
     );
 
     if (activeSub && activeSub.id !== this.lastSpokenId) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(activeSub.translated);
-      utterance.lang = getSpeechLang(this.lang);
-      utterance.rate = this.rate;
-      utterance.pitch = 1;
+      if (isSpeechSynthesisSupported()) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(activeSub.translated);
+        utterance.lang = getSpeechLang(this.lang);
+        utterance.rate = this.rate;
+        utterance.pitch = 1;
 
-      // Use selected voice or fall back to first available
-      if (this.selectedVoice) {
-        utterance.voice = this.selectedVoice;
-      } else {
-        const voices = getAvailableVoices(this.lang);
-        if (voices.length > 0) {
-          utterance.voice = voices[0];
+        if (this.selectedVoice) {
+          utterance.voice = this.selectedVoice;
+        } else {
+          const voices = getAvailableVoices(this.lang);
+          if (voices.length > 0) {
+            utterance.voice = voices[0];
+          }
         }
-      }
 
-      window.speechSynthesis.speak(utterance);
+        window.speechSynthesis.speak(utterance);
+      }
       this.lastSpokenId = activeSub.id;
     } else if (!activeSub) {
       this.lastSpokenId = null;
