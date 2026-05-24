@@ -205,7 +205,7 @@ export function SpeechDiagnosticsPanel({ targetLang = "zh" }: { targetLang?: str
                     <tr
                       key={v.voiceURI + i}
                       className={`border-t border-border ${
-                        v.lang.startsWith(targetLang.split("-")[1])
+                        filteredVoiceURIs.has(v.voiceURI)
                           ? "bg-primary/5"
                           : ""
                       }`}
