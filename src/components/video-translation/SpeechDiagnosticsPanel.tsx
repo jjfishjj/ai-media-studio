@@ -108,8 +108,10 @@ export function SpeechDiagnosticsPanel({ targetLang = "zh" }: { targetLang?: str
     }
   };
 
-  const filteredVoices = data ? getAvailableVoices(targetLang) : [];
-  const filteredCount = filteredVoices.length;
+  const filteredVoiceURIs = new Set(
+    data ? getAvailableVoices(targetLang).map((v) => v.voiceURI) : []
+  );
+  const filteredCount = filteredVoiceURIs.size;
 
   return (
     <div className="p-3 rounded-xl bg-card border border-border space-y-2">
