@@ -245,6 +245,8 @@ export default function VideoTranslation() {
               />
             </>
           )}
+
+          <SpeechDiagnosticsPanel targetLang={targetVoice} />
         </div>
 
         {/* Center: Video Preview with synced subtitles */}
