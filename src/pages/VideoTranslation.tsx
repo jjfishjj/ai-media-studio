@@ -13,6 +13,7 @@ import type { SubtitleEntry } from "@/lib/subtitleExporter";
 import { VideoPreview } from "@/components/video-translation/VideoPreview";
 import { SubtitleExportPanel } from "@/components/video-translation/SubtitleExportPanel";
 import { BurnSubtitlePanel } from "@/components/video-translation/BurnSubtitlePanel";
+import { SpeechDiagnosticsPanel } from "@/components/video-translation/SpeechDiagnosticsPanel";
 
 const LANGUAGES = [
   { value: "auto", label: "自動偵測" },
