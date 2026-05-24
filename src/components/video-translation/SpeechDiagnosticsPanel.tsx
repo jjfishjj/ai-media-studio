@@ -231,9 +231,11 @@ export function SpeechDiagnosticsPanel({ targetLang = "zh" }: { targetLang?: str
             </div>
           )}
 
-          {data && data.voices.length === 1 && (
+          {data && data.voices.length < 2 && (
             <p className="text-[10px] text-muted-foreground italic">
-              未偵測到任何語音資料。部分瀏覽器需使用者互動後才會載入語音清單。
+              {data.voices.length === 1
+                ? "僅偵測到 1 個語音，部分瀏覽器需使用者互動後才會完整載入語音清單。"
+                : "未偵測到任何語音資料。部分瀏覽器需使用者互動後才會載入語音清單。"}
             </p>
           )}
 
