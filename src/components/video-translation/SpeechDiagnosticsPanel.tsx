@@ -19,7 +19,6 @@ import { toast } from "sonner";
 import {
   isSpeechSynthesisSupported,
   getAvailableVoices,
-  getSpeechLang,
 } from "@/lib/speechDubbing";
 
 interface VoiceInfo {
